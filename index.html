@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#07111f">
+<title>Painel de Grupos</title>
+<style>
+:root{
+  --bg:#070d18;--panel:#0d1728;--panel2:#111f34;--line:#20334f;
+  --text:#edf4ff;--muted:#8da2bf;--blue:#2787ff;--blue2:#1264d8;
+  --green:#20c997;--red:#ff6678;
+}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 15% 0%,#102b4d 0%,transparent 42%),var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif}
+header{padding:34px 22px 22px;max-width:1180px;margin:auto}
+.eyebrow{color:#6fb0ff;font-size:11px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase}
+h1{font-size:clamp(28px,5vw,42px);margin:9px 0 8px;letter-spacing:-1.2px}
+.subtitle{color:var(--muted);margin:0;font-size:14px}
+main{max-width:1180px;margin:auto;padding:0 22px 48px}
+.toolbar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:18px 0}
+.search{flex:1;min-width:220px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 15px;color:var(--text);font-size:14px;outline:none}
+.search:focus{border-color:var(--blue);box-shadow:0 0 0 3px #2787ff22}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0 14px}
+.tab,.mode,.btn{border:1px solid var(--line);background:var(--panel);color:#c6d5e9;border-radius:10px;padding:10px 14px;font-weight:700;font-size:13px;cursor:pointer;transition:.18s}
+.tab:hover,.mode:hover,.btn:hover{border-color:#438fe9;color:white;transform:translateY(-1px)}
+.tab.active{background:#123d70;border-color:#287fe0;color:#fff}
+.panel{background:linear-gradient(145deg,#0e1a2c,#0a1422);border:1px solid var(--line);border-radius:17px;padding:18px;box-shadow:0 18px 50px #0003}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.panel h2{font-size:19px;margin:0}
+.count{font-size:12px;color:var(--muted);margin-top:5px}
+.modes{display:flex;gap:7px}
+.mode.active.rem{background:#4b1c2b;border-color:#a83b56;color:#ffdce2}
+.mode.active.add{background:#104333;border-color:#168c66;color:#d5fff0}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.btn.primary{background:linear-gradient(135deg,var(--blue),var(--blue2));border-color:transparent;color:white}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.list{display:grid;gap:9px}
+.item{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#0b1626;border:1px solid #1c2d45;border-radius:11px;padding:11px 12px}
+.command{font-family:Consolas,Monaco,monospace;font-size:13px;line-height:1.5;overflow-wrap:anywhere;color:#d8e8ff}
+.copy{flex-shrink:0;background:#142943;border:1px solid #29476c;color:#dcecff;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer}
+.copy:hover{background:#1b3d64}
+.empty{padding:28px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px}
+footer{text-align:center;color:#627894;font-size:11px;padding:22px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:#e9f4ff;color:#10243d;padding:11px 16px;border-radius:10px;font-size:13px;font-weight:800;box-shadow:0 8px 30px #0006;transition:.2s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media(max-width:600px){header{padding-top:25px}.panel{padding:14px}.item{align-items:flex-start}.copy{padding:8px}.panel-head{align-items:flex-start}}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">Central de comandos</div>
+  <h1>Painel de Grupos</h1>
+  <p class="subtitle">Consulte, pesquise e copie comandos de adicionar ou remover grupos.</p>
+</header>
+<main>
+  <div class="toolbar">
+    <input id="search" class="search" type="search" placeholder="Pesquisar cargo ou comando..." autocomplete="off">
+  </div>
+  <nav class="tabs" id="tabs" aria-label="Categorias"></nav>
+  <section class="panel">
+    <div class="panel-head">
+      <div><h2 id="categoryTitle">PRF</h2><div class="count" id="count"></div></div>
+      <div class="modes">
+        <button class="mode active rem" data-mode="rem">REM · Remover</button>
+        <button class="mode add" data-mode="add">ADD · Adicionar</button>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="copyAll">Copiar todos</button>
+      <button class="btn" id="copyVisible">Copiar resultados</button>
+    </div>
+    <div class="list" id="list"></div>
+  </section>
+</main>
+<footer>Painel de comandos · Uso interno</footer>
+<div class="toast" id="toast">Comando copiado!</div>
+<script>
+const groups = {
+  "PRF": [
+    'DiretorGeral [PRF]','Diretor [PRF]','SubDiretor [PRF]','SupervisorGeral [PRF]',
+    'Supervisor [PRF]','InspetorGeral [PRF]','Inspetor [PRF]','ComandoNOE [PRF]',
+    'SubComandoNOE [PRF]','Noe [PRF]','Recrutador [PRF]','AgenteEspecial [PRF]',
+    'AgentePrimeiraClasse [PRF]','AgenteSegundaClasse [PRF]','AgenteTerceiraClasse [PRF]',
+    'Estagiário [PRF]'
+  ],
+  "FEDERAL (PF)": [
+    'DiretorGeral [PF]','Diretor [PF]','SubDiretor [PF]','DelegadoAdjunto [PF]',
+    'CorregedorGeral [PF]','Spec [PF]','Comandodedivisão [PF]','SubComandoDivisão [PF]',
+    'Investigador [PF]','Supervisor[PF]','Inspetor [PF]','Escrivao [PF]',
+    'AgenteEspecial [PF]','AgenteOperacional [PF]','AgentePrimeiraClasse [PF]',
+    'AgenteSegundaClasse [PF]','AgenteTerceiraClassa [PF]','Estagiario [PF]'
+  ],
+  "POLÍCIA CIVIL": [
+    'ComandoGeral [CIVIL]','DelegadoGeral [CIVIL]','Delegado [CIVIL]','DelegadoAdjunto [CIVIL]',
+    'ComandoDivisao [CIVIL]','SubComandoDivisao [CIVIL]','PPT [CIVIL]','Coordenador [CIVIL]',
+    'Supervisor [CIVIL]}','Draco [CIVIL]','Core [CIVIL]','SAER [CIVIL]}','Rocam [CIVIL]',
+    'SPEED [CIVIL]','Perito [CIVIL]','Inspetor [CIVIL]','Investigador [CIVIL]',
+    'Instrutor[CIVIL]','Recrutador [CIVIL]','Agente Administrativo [CIVIL]',
+    'Agente [CIVIL]','Recruta [CIVIL]'
+  ],
+  "EXÉRCITO": [
+    'Marechal [EXERCITO]','GeneralExército [EXERCITO]','Coronel [EXERCITO]',
+    'TenenteCoronel [EXERCITO]','Major [EXERCITO]','Capitao [EXERCITO]',
+    'PrimeiroTenente [EXERCITO]','SegundoTenente [EXERCITO]','Corregedor [EXERCITO]',
+    'AspiranteOficial [EXERCITO]','Subtenente [EXERCITO]','PrimeiroSargento [EXERCITO]',
+    'SegundoSargento [EXERCITO]','TerceiroSargento [EXERCITO]','Cabo [EXERCITO]',
+    'Soldado [EXERCITO]'
+  ],
+  "POLÍCIA MILITAR (PMERJ)": [
+    'ComandanteGeral [POLICIA]','Comandante [POLICIA]','SubComandante [POLICIA]',
+    'Coronel [POLICIA]','TenenteCoronel [POLICIA]','Major [POLICIA]','Capitão [POLICIA]',
+    'PrimeiroTenente [POLICIA]','SegundoTenente [POLICIA]','Elite [POLICIA]',
+    'Aspirante [POLICIA]','SubTenente [POLICIA]','PrimeiroSargento [POLICIA]',
+    'SegundoSargento [POLICIA]','TerceiroSargento [POLICIA]','Cabo [POLICIA]',
+    'Soldado [POLICIA]','Aluno [POLICIA]'
+  ]
+};
+
+let activeCategory = Object.keys(groups)[0];
+let mode = 'rem';
+const tabs = document.getElementById('tabs');
+const list = document.getElementById('list');
+const search = document.getElementById('search');
+const toast = document.getElementById('toast');
+
+function commandFor(name){ return `group${mode} ID "${name}`; }
+function showToast(message){
+  toast.textContent = message; toast.classList.add('show');
+  clearTimeout(showToast.timer); showToast.timer = setTimeout(()=>toast.classList.remove('show'),1600);
+}
+async function copyText(value){
+  try {
+    await navigator.clipboard.writeText(value);
+    showToast('Copiado para a área de transferência!');
+  } catch(e) {
+    const area=document.createElement('textarea'); area.value=value;
+    document.body.appendChild(area); area.select();
+    document.execCommand('copy'); area.remove();
+    showToast('Copiado para a área de transferência!');
+  }
+}
+function renderTabs(){
+  tabs.innerHTML='';
+  Object.keys(groups).forEach(category=>{
+    const button=document.createElement('button');
+    button.className='tab'+(category===activeCategory?' active':'');
+    button.textContent=category;
+    button.onclick=()=>{activeCategory=category;renderTabs();renderList();};
+    tabs.appendChild(button);
+  });
+}
+function renderList(){
+  document.getElementById('categoryTitle').textContent=activeCategory;
+  document.getElementById('count').textContent=`${groups[activeCategory].length} cargos cadastrados`;
+  document.querySelectorAll('.mode').forEach(b=>{
+    b.classList.toggle('active',b.dataset.mode===mode);
+  });
+  const query=search.value.trim().toLocaleLowerCase('pt-BR');
+  const filtered=groups[activeCategory].filter(name=>commandFor(name).toLocaleLowerCase('pt-BR').includes(query));
+  list.innerHTML='';
+  if(!filtered.length){list.innerHTML='<div class="empty">Nenhum comando encontrado nesta categoria.</div>';return;}
+  filtered.forEach(name=>{
+    const row=document.createElement('div');row.className='item';
+    const code=document.createElement('div');code.className='command';code.textContent=commandFor(name);
+    const button=document.createElement('button');button.className='copy';button.textContent='Copiar';
+    button.onclick=()=>copyText(commandFor(name));
+    row.append(code,button);list.appendChild(row);
+  });
+}
+document.querySelectorAll('.mode').forEach(button=>{
+  button.addEventListener('click',()=>{mode=button.dataset.mode;renderList();});
+});
+search.addEventListener('input',renderList);
+document.getElementById('copyAll').onclick=()=>copyText(groups[activeCategory].map(commandFor).join('\n'));
+document.getElementById('copyVisible').onclick=()=>{
+  const query=search.value.trim().toLocaleLowerCase('pt-BR');
+  const filtered=groups[activeCategory].filter(name=>commandFor(name).toLocaleLowerCase('pt-BR').includes(query));
+  if(filtered.length) copyText(filtered.map(commandFor).join('\n'));
+};
+renderTabs();renderList();
+</script>
+</body>
+</html>
